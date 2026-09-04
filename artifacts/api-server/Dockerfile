@@ -10,10 +10,11 @@ WORKDIR /repo
 # present, so we copy the whole repo rather than cherry-picking files.)
 FROM base AS deps
 COPY . .
-RUN pnpm install --frozen-lockfile --filter @workspace/api-server...
+RUN pnpm install --frozen-lockfile
 
 # ---- build: bundle to a single self-contained dist/index.mjs ----
 FROM deps AS build
+RUN pnpm --filter @workspace/dbrutals build
 RUN pnpm --filter @workspace/api-server build
 
 
@@ -22,5 +23,6 @@ FROM node:22-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /repo/artifacts/api-server/dist ./dist
+COPY --from=build /repo/artifacts/dbrutals/dist/public ./public
 EXPOSE 8080
 CMD ["node", "--enable-source-maps", "./dist/index.mjs"]

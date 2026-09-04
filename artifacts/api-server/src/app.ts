@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import path from "node:path";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
@@ -73,6 +74,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/bot", botRootRouter);
 
 app.use("/api", router);
+
+const frontendDirectory = path.resolve(__dirname, "../public");
+app.use(express.static(frontendDirectory));
+app.get("/{*path}", (_req, res) => {
+  res.sendFile(path.join(frontendDirectory, "index.html"));
+});
 
 void initializeWhatsAppBot();
 
