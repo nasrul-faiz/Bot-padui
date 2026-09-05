@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { CalendarClock, ContactRound, FileAudio, FileText, Image, ListChecks, LoaderCircle, MapPin, MessageCircleMore, Mic, Music2, Pencil, Phone, Plus, Search, Send, Smartphone, Smile, Trash2, Upload, UserRound, Video, Download } from "lucide-react"
+import { AlertTriangle, CalendarClock, CheckCircle2, ContactRound, FileAudio, FileText, Image, ListChecks, LoaderCircle, MapPin, MessageCircleMore, Mic, Music2, Pencil, Phone, Plus, Search, Send, Smartphone, Smile, Trash2, Upload, UserRound, Video, Download } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -365,6 +366,18 @@ function getDeletedContentLabel(message: DeletedMessage) {
   }
 }
 
+function getDeletedPreviewIcon(message: DeletedMessage) {
+  if (message.mediaType === 'image' || message.mediaType === 'sticker') return Image
+  if (message.mediaType === 'video') return Video
+  if (message.mediaType === 'audio') return message.isVoiceNote ? Mic : Music2
+  if (message.mediaType === 'document') return FileText
+  if (message.details?.location) return MapPin
+  if (message.details?.contact) return ContactRound
+  if (message.details?.poll) return ListChecks
+  if (message.details?.reaction) return Smile
+  return null
+}
+
 function renderDeletedMessageDetails(message: DeletedMessage) {
   const details = message.details
   if (details?.location) {
@@ -578,8 +591,9 @@ function DeletedMessages() {
         const sorted = [...chatMessages].sort((a, b) => new Date(a.changedAt).getTime() - new Date(b.changedAt).getTime())
         const newest = sorted[sorted.length - 1]
         const title = newest?.chatName || newest?.senderName || chatJid
-        const previewText = newest?.currentText || newest?.originalText || (newest?.mediaType ? `[${newest.mediaType}]` : '[Kandungan tidak sempat ditangkap]')
-        return { chatJid, title, previewText, messages: sorted }
+        const previewText = newest?.currentText || newest?.originalText || (newest ? getDeletedContentLabel(newest) : '[Kandungan tidak sempat ditangkap]')
+        const previewIcon = newest ? getDeletedPreviewIcon(newest) : null
+        return { chatJid, title, previewText, previewIcon, messages: sorted }
       })
       .sort((a, b) => new Date(b.messages[b.messages.length - 1].changedAt).getTime() - new Date(a.messages[a.messages.length - 1].changedAt).getTime())
   }, [filteredMessages])
@@ -599,13 +613,19 @@ function DeletedMessages() {
   return (
     <div className="space-y-4">
       {botStatus !== 'connected' ? (
-        <div className="rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">
-          Bot belum disambungkan. Buka halaman Account dan lengkapkan QR atau pairing code. Hanya mesej yang diterima selepas bot tersambung boleh dipulihkan.
-        </div>
+        <Alert variant="warning">
+          <AlertTriangle className="size-4" />
+          <AlertDescription>
+            Bot belum disambungkan. Buka halaman Account dan lengkapkan QR atau pairing code. Hanya mesej yang diterima selepas bot tersambung boleh dipulihkan.
+          </AlertDescription>
+        </Alert>
       ) : (
-        <div className="rounded-xl border border-emerald-300/60 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-200">
-          Bot tersambung dan sedang menangkap mesej baharu untuk personal, group, dan Status.
-        </div>
+        <Alert variant="success">
+          <CheckCircle2 className="size-4" />
+          <AlertDescription>
+            Bot tersambung dan sedang menangkap mesej baharu untuk personal, group, dan Status.
+          </AlertDescription>
+        </Alert>
       )}
 
       <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -637,7 +657,7 @@ function DeletedMessages() {
       ) : null}
 
       {!loading && !error && filteredMessages.length ? <div className="space-y-3">
-        {groupedMessages.map(({ chatJid, title, previewText, messages: chatMessages }) => (
+        {groupedMessages.map(({ chatJid, title, previewText, previewIcon: PreviewIcon, messages: chatMessages }) => (
           <article key={chatJid} className="rounded-xl border border-border/70 bg-card p-3 shadow-sm transition-colors hover:bg-accent/20">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
@@ -660,8 +680,9 @@ function DeletedMessages() {
               </div>
             </div>
 
-            <p className="mt-3 truncate text-xs text-muted-foreground">
-              {previewText.length > 90 ? `${previewText.slice(0, 90)}...` : previewText}
+            <p className="mt-3 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+              {PreviewIcon ? <PreviewIcon className="size-3.5 shrink-0" /> : null}
+              <span className="truncate">{previewText.length > 90 ? `${previewText.slice(0, 90)}...` : previewText}</span>
             </p>
           </article>
         ))}
@@ -717,7 +738,7 @@ function DeletedMessages() {
 }
 
 
-type ContactCategory = "Customer" | "Supplier" | "Support" | "Other"
+type ContactCategory = "Customer" | "Supplier" | "Support" | "Family" | "Parent" | "Sibling" | "Spouse" | "Friend" | "Colleague" | "Relative" | "Other"
 
 type ContactRecord = {
   id: string
@@ -1065,6 +1086,13 @@ export function ContactManager({ initialContacts }: ContactManagerProps = {}) {
                   <SelectItem value="Customer">Customer</SelectItem>
                   <SelectItem value="Supplier">Supplier</SelectItem>
                   <SelectItem value="Support">Support</SelectItem>
+                  <SelectItem value="Family">Family</SelectItem>
+                  <SelectItem value="Parent">Parent</SelectItem>
+                  <SelectItem value="Sibling">Sibling</SelectItem>
+                  <SelectItem value="Spouse">Spouse</SelectItem>
+                  <SelectItem value="Friend">Friend</SelectItem>
+                  <SelectItem value="Colleague">Colleague</SelectItem>
+                  <SelectItem value="Relative">Relative</SelectItem>
                   <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
